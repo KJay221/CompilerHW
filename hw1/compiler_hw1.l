@@ -18,9 +18,44 @@ id {letter}+({letter}|{digit})*
 inumber {digit}+
 fnumber ({digit}*\.{digit}+)
 string \"(.*)\"
+comment1 "//"(.*)"\n"
+comment2 "/*"(.*)"*/\n"
+%x comment3
 
 /* Rules section */
 %%
+
+{comment1}  {
+                yytext[strlen(yytext) - 1] = '\0';
+                printf("%s \t %s\n", yytext, "C++ Comment");
+                comment_num++;
+                line_num++;
+            }
+{comment2}  {
+                yytext[strlen(yytext) - 1] = '\0';
+                printf("%s \t %s\n", yytext, "C Comment");
+                comment_num++;
+                line_num++;
+            }
+
+"/*"(.)*"\n"        { 
+                        yytext[strlen(yytext) - 1] = '\0';
+                        printf("%s \t %s\n", yytext, "C Comment"); 
+                        comment_num++; 
+                        line_num++;
+                        BEGIN(comment3);
+                    }
+<comment3>(.)*"*/"$ {
+                        BEGIN(INITIAL);
+                        printf("%s \t %s\n", yytext, "C Comment"); 
+                        comment_num++;
+                    }
+<comment3>[^\n]+    {
+                        printf("%s \t %s\n", yytext, "C Comment"); 
+                        comment_num++; 
+                    }
+<comment3>"\n"      {line_num++;}
+
 
 "+"         { printf("%-8s \t %s\n", yytext, "ADD"); }
 "-"         { printf("%-8s \t %s\n", yytext, "SUB"); }
@@ -89,7 +124,7 @@ string \"(.*)\"
 
 <<EOF>>     { line_num++; yyterminate(); }
 .           {;}
-\n         { line_num++; }
+\n          { line_num++; }
 
 %%
 
