@@ -2,3 +2,4 @@ myscanner
 *.yy.c
 tmp.out
 /upload_file
+.vscode

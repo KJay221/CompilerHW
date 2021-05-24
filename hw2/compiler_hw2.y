@@ -1,68 +1,62 @@
 /*	Definition section */
 %{
-    #include "common.h" //Extern variables that communicate with lex
-    // #define YYDEBUG 1
-    // int yydebug = 1;
+    #include "common.h"
 
     extern int yylineno;
     extern int yylex();
     extern FILE *yyin;
-
-    void yyerror (char const *s)
-    {
+    void yyerror (char const *s){
         printf("error:%d: %s\n", yylineno, s);
     }
-
-
-    /* Symbol table function - you can add new function if needed. */
-    static void create_symbol(/* ... */);
-    static void insert_symbol(/* ... */);
-    static void lookup_symbol(/* ... */);
-    static void dump_symbol(/* ... */);
 %}
 
-%error-verbose
-
-/* Use variable or self-defined structure to represent
- * nonterminal and token type
- */
 %union {
     int i_val;
     float f_val;
     char *s_val;
-    /* ... */
 }
 
 /* Token without return */
-%token INT FLOAT BOOL STRING
+%token ADD SUB MUL QUO REM INC DEC
 %token SEMICOLON
+%token INT
 
 /* Token with return, which need to sepcify type */
 %token <i_val> INT_LIT
 %token <f_val> FLOAT_LIT
 %token <s_val> STRING_LIT
+%token <s_val> ID
 
 /* Nonterminal with return, which need to sepcify type */
 
 /* Yacc will start at this nonterminal */
-%start Program
+%start program
 
 /* Grammar section */
 %%
 
-Program
-    : StatementList
+program
+    : program statements
+    | statements
 ;
 
-Type
-    : TypeName { $$ = $1; }
+statements
+    : arithmetic
+    | declare
+
+declare
+    : INT ID SEMICOLON
 ;
 
-TypeName
-    : INT
-    | FLOAT
-    | STRING
-    | BOOL
+arithmetic
+    : ID ADD ID SEMICOLON
+    | ID SUB ID SEMICOLON
+    | ID MUL ID SEMICOLON
+    | ID QUO ID SEMICOLON
+    | ID REM ID SEMICOLON
+    | ID INC SEMICOLON
+    | ID DEC SEMICOLON
+    | 
 ;
 
 Literal
@@ -72,14 +66,6 @@ Literal
     | FLOAT_LIT {
         printf("FLOAT_LIT %f\n", $<f_val>$);
     }
-;
-
-Statement
-    : DeclarationStmt
-    | Block
-    | IfStmt
-    | LoopStmt
-    | PrintStmt
 ;
 
 %%
