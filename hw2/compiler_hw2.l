@@ -25,9 +25,28 @@ fnumber ({digit}*\.{digit}+)
 "++"        {return INC;}
 "--"        {return DEC;}
 
+">"         {return GTR;}
+"<"         {return LSS;}
+">="        {return GEQ;}
+"<="        {return LEQ;}
+"=="        {return EQL;}
+"!="        {return NEQ;}
+
+"&&"        {return AND;}
+"||"        {return OR;}
+"!"         {return NOT;}
+
+"("         {return LB;}
+")"         {return RB;}
 ";"         {return SEMICOLON;}
 
+"print"     {return PRINT;}
 "int"       {return INT;}
+"true"      {return TRUE;}
+"false"     {return FALSE;}
+
+{inumber}	{yylval.i_val = atoi(yytext); return INT_LIT;}
+{fnumber}	{yylval.f_val = atof(yytext); return FLOAT_LIT;}
 
 {id}        {yylval.s_val = strdup(yytext); return ID;}
 

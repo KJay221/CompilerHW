@@ -27,6 +27,7 @@
     int symbolTableIndex = 0;
     int nowElementIndex = -1;
     int address = -1;
+    char* printType = "bool";
     
     void insert_symbol(char* name, char* type, char* elementType);
     void declareFunction(char* name, char* type, char* elementType);
@@ -42,8 +43,11 @@
 
 /* Token without return */
 %token ADD SUB MUL QUO REM INC DEC
-%token SEMICOLON
-%token INT
+%token SEMICOLON LB RB
+%token INT PRINT
+%token AND OR NOT
+%token TRUE FALSE
+%token GTR LSS GEQ LEQ EQL NEQ
 
 /* Token with return, which need to sepcify type */
 %token <i_val> INT_LIT
@@ -65,30 +69,89 @@ program
 ;
 
 statements
-    : arithmetic
-    | declare
+    : logical_statement_1 //comparater arithmetic 
+    | declare_statement
+    | print_statement
+    | statements statements
+;
 
-declare
+declare_statement
     : INT ID SEMICOLON {declareFunction($2, "int", "-");}
 ;
 
-arithmetic
-    : arithmetic ADD arithmetic SEMICOLON {printf("ADD\n");}
-    | arithmetic SUB arithmetic SEMICOLON {printf("SUB\n");}
-    | arithmetic MUL arithmetic SEMICOLON {printf("MUL\n");}
-    | arithmetic QUO arithmetic SEMICOLON {printf("QUO\n");}
-    | arithmetic REM arithmetic SEMICOLON {printf("REM\n");}
-    | arithmetic INC SEMICOLON {printf("INC\n");}
-    | arithmetic DEC SEMICOLON {printf("DEC\n");}
+print_statement
+    : PRINT LB logical_statement_1 RB SEMICOLON {printf("PRINT %s\n", printType);}
+;
+
+logical_statement_1
+    : logical_statement_2 OR logical_statement_2 {printType = "bool"; printf("OR\n");}
+    | logical_statement_1 OR logical_statement_2 {printType = "bool"; printf("OR\n");}
+    | logical_statement_2
+;
+
+logical_statement_2
+    : comparater_statement AND comparater_statement {printType = "bool"; printf("AND\n");}
+    | logical_statement_2 AND comparater_statement {printType = "bool"; printf("AND\n");}
+    | comparater_statement
+;
+
+comparater_statement
+    : arithmetic_statement GTR arithmetic_statement {printType = "bool"; printf("GTR\n");}
+    | arithmetic_statement LSS arithmetic_statement {printType = "bool"; printf("LSS\n");}
+    | arithmetic_statement GEQ arithmetic_statement {printType = "bool"; printf("GEQ\n");}
+    | arithmetic_statement LEQ arithmetic_statement {printType = "bool"; printf("LEQ\n");}
+    | arithmetic_statement EQL arithmetic_statement {printType = "bool"; printf("EQL\n");}
+    | arithmetic_statement NEQ arithmetic_statement {printType = "bool"; printf("NEQ\n");}
+    | comparater_statement GTR arithmetic_statement {printType = "bool"; printf("GTR\n");}
+    | comparater_statement LSS arithmetic_statement {printType = "bool"; printf("LSS\n");}
+    | comparater_statement GEQ arithmetic_statement {printType = "bool"; printf("GEQ\n");}
+    | comparater_statement LEQ arithmetic_statement {printType = "bool"; printf("LEQ\n");}
+    | comparater_statement EQL arithmetic_statement {printType = "bool"; printf("EQL\n");}
+    | comparater_statement NEQ arithmetic_statement {printType = "bool"; printf("NEQ\n");}
+    | arithmetic_statement
+;
+
+arithmetic_statement
+    : arithmetic_statement_1
+    | arithmetic_statement_1 SEMICOLON
+;
+
+arithmetic_statement_1
+    : arithmetic_statement_2 ADD arithmetic_statement_2 {printf("ADD\n");}
+    | arithmetic_statement_2 SUB arithmetic_statement_2 {printf("SUB\n");}
+    | arithmetic_statement_1 ADD arithmetic_statement_2 {printf("ADD\n");}
+    | arithmetic_statement_1 SUB arithmetic_statement_2 {printf("SUB\n");}
+    | arithmetic_statement_2
+;
+
+arithmetic_statement_2
+    : arithmetic_statement_3 MUL arithmetic_statement_3 {printf("MUL\n");}
+    | arithmetic_statement_3 QUO arithmetic_statement_3 {printf("QUO\n");}
+    | arithmetic_statement_3 REM arithmetic_statement_3 {printf("REM\n");}
+    | arithmetic_statement_2 MUL arithmetic_statement_3 {printf("MUL\n");}
+    | arithmetic_statement_2 QUO arithmetic_statement_3 {printf("QUO\n");}
+    | arithmetic_statement_2 REM arithmetic_statement_3 {printf("REM\n");}
+    | arithmetic_statement_3
+;
+
+arithmetic_statement_3
+    : value INC {printf("INC\n");}
+    | value DEC {printf("DEC\n");}
+    | LB arithmetic_statement_1 RB
+    | ADD value {printf("POS\n");}
+    | SUB value {printf("NEG\n");}
+    | NOT value {printType = "bool"; printf("NOT\n");}
+    | NOT arithmetic_statement_3 {printType = "bool"; printf("NOT\n");}
     | value
 ;
 
 value
-    : INT_LIT
-    | FLOAT_LIT
+    : INT_LIT {printType = "int"; printf("INT_LIT %d\n", $<i_val>$);}
+    | FLOAT_LIT {printType = "float"; printf("FLOAT_LIT %.6f\n", $<f_val>$);}
     | STRING_LIT
     | ID {idFunction($1);}
-
+    | TRUE {printType = "bool"; printf("TRUE\n");}
+    | FALSE {printType = "bool"; printf("FALSE\n");}
 %%
 
 /* C code section */
