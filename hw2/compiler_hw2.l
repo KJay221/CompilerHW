@@ -3,6 +3,7 @@
     #include "common.h"
     #include "y.tab.h"
 
+    extern YYSTYPE yylval;
     extern int yylineno;
 %}
 
@@ -16,19 +17,19 @@ fnumber ({digit}*\.{digit}+)
 
 /* Rules section */
 %%
-"+"         {printf("ADD\n"); return ADD;}
-"-"         {printf("SUB\n"); return SUB;}
-"*"         {printf("MUL\n"); return MUL;}
-"/"         {printf("QUO\n"); return QUO;}
-"%"         {printf("REM\n"); return REM;}
-"++"        {printf("INC\n"); return INC;}
-"--"        {printf("DEC\n"); return DEC;}
+"+"         {return ADD;}
+"-"         {return SUB;}
+"*"         {return MUL;}
+"/"         {return QUO;}
+"%"         {return REM;}
+"++"        {return INC;}
+"--"        {return DEC;}
 
 ";"         {return SEMICOLON;}
 
 "int"       {return INT;}
 
-{id}        {return ID;}
+{id}        {yylval.s_val = strdup(yytext); return ID;}
 
 [\n]        {yylineno++;}
 .           {;}
