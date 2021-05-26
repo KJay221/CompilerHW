@@ -15,8 +15,14 @@ id {letter}+({letter}|{digit})*
 inumber {digit}+
 fnumber ({digit}*\.{digit}+)
 
+%x STR
+
 /* Rules section */
 %%
+"\""        {BEGIN(STR);}
+<STR>"\""   {BEGIN(INITIAL);}
+<STR>[^\"]* {yylval.s_val = strdup(yytext); return STRING_LIT;}
+
 "+"         {return ADD;}
 "-"         {return SUB;}
 "*"         {return MUL;}
@@ -32,16 +38,26 @@ fnumber ({digit}*\.{digit}+)
 "=="        {return EQL;}
 "!="        {return NEQ;}
 
+"="         {return ASSIGN;}
+
 "&&"        {return AND;}
 "||"        {return OR;}
 "!"         {return NOT;}
 
 "("         {return LB;}
 ")"         {return RB;}
+"{"         {return LBRACE;}
+"}"         {return RBRACE;}
+"["         {return LBRACK;}
+"]"         {return RBRACK;}
 ";"         {return SEMICOLON;}
 
 "print"     {return PRINT;}
+"while"     {return WHILE;}
 "int"       {return INT;}
+"float"     {return FLOAT;}
+"string"    {return STRING;}
+"bool"      {return BOOL;}
 "true"      {return TRUE;}
 "false"     {return FALSE;}
 

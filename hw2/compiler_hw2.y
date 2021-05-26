@@ -20,8 +20,9 @@
     } symbol;
 
     symbol symbolTable[30][30];
-    int symbolElementIndex[30];
-    int *sp = symbolElementIndex;
+
+    int stack[30];
+    int *elementIndexStack = stack;
     #define push(sp, n) (*((sp)++) = (n))
     #define pop(sp) (*--(sp))
     int symbolTableIndex = 0;
@@ -33,6 +34,10 @@
     void declareFunction(char* name, char* type, char* elementType);
     void idFunction(char* id);
     void DumpSymbolTable();
+    void into_zone();
+    void exit_zone();
+    void init_symbolTable();
+    char* get_arrary_type(char* id);
 %}
 
 %union {
@@ -43,8 +48,10 @@
 
 /* Token without return */
 %token ADD SUB MUL QUO REM INC DEC
-%token SEMICOLON LB RB
-%token INT PRINT
+%token SEMICOLON LB RB LBRACE RBRACE LBRACK RBRACK
+%token ASSIGN
+%token INT FLOAT STRING BOOL PRINT
+%token WHILE
 %token AND OR NOT
 %token TRUE FALSE
 %token GTR LSS GEQ LEQ EQL NEQ
@@ -52,10 +59,12 @@
 /* Token with return, which need to sepcify type */
 %token <i_val> INT_LIT
 %token <f_val> FLOAT_LIT
-%token <s_val> STRING_LIT
+%token <s_val> STRING_LIT //string won't send "" to .y file
 %token <s_val> ID
 
 /* Nonterminal with return, which need to sepcify type */
+%type <s_val> type
+%type <s_val> value_basic
 
 /* Yacc will start at this nonterminal */
 %start program
@@ -72,11 +81,22 @@ statements
     : logical_statement_1 //comparater arithmetic 
     | declare_statement
     | print_statement
-    | statements statements
+    | while_statement
+    | assign_statement
+;
+
+assign_statement
+    : value ASSIGN logical_statement_1 {printf("ASSIGN\n");}
+;
+
+while_statement
+    : WHILE LB logical_statement_1 RB {into_zone();} LBRACE program RBRACE {exit_zone();}
 ;
 
 declare_statement
-    : INT ID SEMICOLON {declareFunction($2, "int", "-");}
+    : type ID SEMICOLON {declareFunction($2, $1, "-");}
+    | type ID ASSIGN value SEMICOLON {declareFunction($2, $1, "-");}
+    | type ID LBRACK value RBRACK SEMICOLON {declareFunction($2, "array", $1);}
 ;
 
 print_statement
@@ -146,12 +166,27 @@ arithmetic_statement_3
 ;
 
 value
+    : value_basic LBRACK logical_statement_1 RBRACK {printType = get_arrary_type($1);}
+    | value_basic
+;
+
+value_basic
     : INT_LIT {printType = "int"; printf("INT_LIT %d\n", $<i_val>$);}
     | FLOAT_LIT {printType = "float"; printf("FLOAT_LIT %.6f\n", $<f_val>$);}
-    | STRING_LIT
-    | ID {idFunction($1);}
+    | STRING_LIT {printType = "string"; printf("STRING_LIT %s\n", $<s_val>$);}
     | TRUE {printType = "bool"; printf("TRUE\n");}
     | FALSE {printType = "bool"; printf("FALSE\n");}
+    | ID {idFunction($1);}
+;
+
+type
+    : INT {$$ = "int";}
+    | FLOAT {$$ = "float";}
+    | STRING {$$ = "string";}
+    | BOOL {$$ = "bool";}
+;
+
+
 %%
 
 /* C code section */
@@ -162,6 +197,7 @@ int main(int argc, char *argv[])
     } else {
         yyin = stdin;
     }
+    init_symbolTable();
 
     yyparse();
     DumpSymbolTable();
@@ -190,10 +226,17 @@ void declareFunction(char* name, char* type, char* elementType){
 
 void idFunction(char* id){
     int nowAddress = 0;
-    
-    for(int i=0;i<=nowElementIndex;i++){
-        if(!strcmp(symbolTable[symbolTableIndex][i].name, id))
-            nowAddress = symbolTable[symbolTableIndex][i].address;
+    int flag = 0;
+    for(int i=0;i<30;i++){
+        for(int j=0;j<30;j++){
+            if(!strcmp(symbolTable[i][j].name, id)){
+                nowAddress = symbolTable[i][j].address;
+                flag = 1;
+                break;
+            }    
+        }
+        if(flag)
+            break;
     }
     printf("IDENT (name=%s, address=%d)\n", 
         id, 
@@ -211,4 +254,36 @@ void DumpSymbolTable(){
             symbolTable[symbolTableIndex][i].address,
             symbolTable[symbolTableIndex][i].lineno,
             symbolTable[symbolTableIndex][i].elementType);
+}
+
+void into_zone(){
+    push(elementIndexStack, nowElementIndex);
+    symbolTableIndex++;
+    nowElementIndex = -1;
+}
+
+void exit_zone(){
+    DumpSymbolTable();
+    nowElementIndex = pop(elementIndexStack);
+    symbolTableIndex--;
+}
+
+void init_symbolTable(){
+    for(int i=0;i<30;i++){
+        for(int j=0;j<30;j++){
+            symbolTable[i][j].index = 0;
+            symbolTable[i][j].name = "";
+            symbolTable[i][j].type = "";
+            symbolTable[i][j].address = 0;
+            symbolTable[i][j].lineno = 0;
+            symbolTable[i][j].elementType = "";
+        }
+    }
+}
+
+char* get_arrary_type(char* id){
+    for(int i=0;i<=nowElementIndex;i++){
+        if(!strcmp(symbolTable[symbolTableIndex][i].name, id))
+            return symbolTable[symbolTableIndex][i].elementType;
+    }
 }
