@@ -67,6 +67,7 @@ fnumber ({digit}*\.{digit}+)
 "print"     {return PRINT;}
 "if"        {return IF;}
 "else"      {return ELSE;}
+"for"       {return FOR;}
 "while"     {return WHILE;}
 "int"       {return INT;}
 "float"     {return FLOAT;}

@@ -54,7 +54,7 @@
 %token SEMICOLON LB RB LBRACE RBRACE LBRACK RBRACK
 %token ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN QUO_ASSIGN REM_ASSIGN
 %token INT FLOAT STRING BOOL
-%token WHILE PRINT IF ELSE
+%token WHILE PRINT IF ELSE FOR
 %token AND OR NOT
 %token TRUE FALSE
 %token GTR LSS GEQ LEQ EQL NEQ
@@ -90,6 +90,11 @@ statements
     | while_statement
     | assign_statement
     | if_statement
+    | for_statement
+;
+
+for_statement
+    : FOR LB assign_statement logical_statement_1 logical_statement_1 RB {into_zone();} LBRACE program RBRACE {exit_zone();}
 ;
 
 if_statement
@@ -323,9 +328,11 @@ char* get_arrary_type(char* id){
 }
 
 char* get_id_type(char* id){
-    for(int i=0;i<=nowElementIndex;i++){
-        if(!strcmp(symbolTable[symbolTableIndex][i].name, id))
-            return symbolTable[symbolTableIndex][i].type;
+    for(int i=29;i>=0;i--){
+        for(int j=0;j<30;j++){
+            if(!strcmp(symbolTable[i][j].name, id))
+                return symbolTable[i][j].type;
+        }
     }
     return "";
 }
