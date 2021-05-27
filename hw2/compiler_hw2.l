@@ -39,6 +39,11 @@ fnumber ({digit}*\.{digit}+)
 "!="        {return NEQ;}
 
 "="         {return ASSIGN;}
+"+="        {return ADD_ASSIGN;}
+"-="        {return SUB_ASSIGN;}
+"*="        {return MUL_ASSIGN;}
+"/="        {return QUO_ASSIGN;}
+"%="        {return REM_ASSIGN;}
 
 "&&"        {return AND;}
 "||"        {return OR;}

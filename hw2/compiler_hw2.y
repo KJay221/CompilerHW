@@ -38,6 +38,7 @@
     void exit_zone();
     void init_symbolTable();
     char* get_arrary_type(char* id);
+    char* get_id_type(char* id);
 %}
 
 %union {
@@ -49,7 +50,7 @@
 /* Token without return */
 %token ADD SUB MUL QUO REM INC DEC
 %token SEMICOLON LB RB LBRACE RBRACE LBRACK RBRACK
-%token ASSIGN
+%token ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN QUO_ASSIGN REM_ASSIGN
 %token INT FLOAT STRING BOOL PRINT
 %token WHILE
 %token AND OR NOT
@@ -87,6 +88,11 @@ statements
 
 assign_statement
     : value ASSIGN logical_statement_1 {printf("ASSIGN\n");}
+    | value ADD_ASSIGN logical_statement_1 {printf("ADD_ASSIGN\n");}
+    | value SUB_ASSIGN logical_statement_1 {printf("SUB_ASSIGN\n");}
+    | value MUL_ASSIGN logical_statement_1 {printf("MUL_ASSIGN\n");}
+    | value QUO_ASSIGN logical_statement_1 {printf("QUO_ASSIGN\n");}
+    | value REM_ASSIGN logical_statement_1 {printf("REM_ASSIGN\n");}
 ;
 
 while_statement
@@ -176,7 +182,7 @@ value_basic
     | STRING_LIT {printType = "string"; printf("STRING_LIT %s\n", $<s_val>$);}
     | TRUE {printType = "bool"; printf("TRUE\n");}
     | FALSE {printType = "bool"; printf("FALSE\n");}
-    | ID {idFunction($1);}
+    | ID {idFunction($1); printType = get_id_type($1);}
 ;
 
 type
@@ -286,4 +292,13 @@ char* get_arrary_type(char* id){
         if(!strcmp(symbolTable[symbolTableIndex][i].name, id))
             return symbolTable[symbolTableIndex][i].elementType;
     }
+    return "";
+}
+
+char* get_id_type(char* id){
+    for(int i=0;i<=nowElementIndex;i++){
+        if(!strcmp(symbolTable[symbolTableIndex][i].name, id))
+            return symbolTable[symbolTableIndex][i].type;
+    }
+    return "";
 }
