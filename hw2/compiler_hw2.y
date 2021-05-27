@@ -40,6 +40,7 @@
     char* get_arrary_type(char* id);
     char* get_id_type(char* id);
     void change_type(char* id, char *type);
+    void clean_symbolTable();
 %}
 
 %union {
@@ -52,8 +53,8 @@
 %token ADD SUB MUL QUO REM INC DEC
 %token SEMICOLON LB RB LBRACE RBRACE LBRACK RBRACK
 %token ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN QUO_ASSIGN REM_ASSIGN
-%token INT FLOAT STRING BOOL PRINT
-%token WHILE
+%token INT FLOAT STRING BOOL
+%token WHILE PRINT IF ELSE
 %token AND OR NOT
 %token TRUE FALSE
 %token GTR LSS GEQ LEQ EQL NEQ
@@ -88,7 +89,13 @@ statements
     | print_statement
     | while_statement
     | assign_statement
+    | if_statement
 ;
+
+if_statement
+    : IF LB logical_statement_1 RB {into_zone();} LBRACE program RBRACE {exit_zone();}
+    | ELSE {into_zone();} LBRACE program RBRACE {exit_zone();}
+    | ELSE IF LB logical_statement_1 RB {into_zone();} LBRACE program RBRACE {exit_zone();}
 
 assign_statement
     : value ASSIGN logical_statement_1 {printf("ASSIGN\n");}
@@ -252,7 +259,7 @@ void declareFunction(char* name, char* type, char* elementType){
 void idFunction(char* id){
     int nowAddress = 0;
     int flag = 0;
-    for(int i=0;i<30;i++){
+    for(int i=29;i>=0;i--){
         for(int j=0;j<30;j++){
             if(!strcmp(symbolTable[i][j].name, id)){
                 nowAddress = symbolTable[i][j].address;
@@ -290,6 +297,7 @@ void into_zone(){
 void exit_zone(){
     DumpSymbolTable();
     nowElementIndex = pop(elementIndexStack);
+    clean_symbolTable();
     symbolTableIndex--;
 }
 
@@ -339,4 +347,15 @@ void change_type(char* id, char *type){
                 break;
             }   
         }
+}
+
+void clean_symbolTable(){
+    for(int i=0;i<30;i++){
+        symbolTable[symbolTableIndex][i].index = 0;
+        symbolTable[symbolTableIndex][i].name = "";
+        symbolTable[symbolTableIndex][i].type = "";
+        symbolTable[symbolTableIndex][i].address = 0;
+        symbolTable[symbolTableIndex][i].lineno = 0;
+        symbolTable[symbolTableIndex][i].elementType = "";
+    }
 }

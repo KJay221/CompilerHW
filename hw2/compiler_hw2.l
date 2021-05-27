@@ -16,9 +16,16 @@ inumber {digit}+
 fnumber ({digit}*\.{digit}+)
 
 %x STR
+%x CMT
 
 /* Rules section */
 %%
+"/*"        { BEGIN(CMT); }
+<CMT>"*/"   { BEGIN(INITIAL); }
+<CMT>\n     {yylineno++;}
+<CMT>.      {;}
+"//".*      {;}
+
 "\""        {BEGIN(STR);}
 <STR>"\""   {BEGIN(INITIAL);}
 <STR>[^\"]* {yylval.s_val = strdup(yytext); return STRING_LIT;}
@@ -58,6 +65,8 @@ fnumber ({digit}*\.{digit}+)
 ";"         {return SEMICOLON;}
 
 "print"     {return PRINT;}
+"if"        {return IF;}
+"else"      {return ELSE;}
 "while"     {return WHILE;}
 "int"       {return INT;}
 "float"     {return FLOAT;}
