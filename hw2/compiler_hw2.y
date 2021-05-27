@@ -39,6 +39,7 @@
     void init_symbolTable();
     char* get_arrary_type(char* id);
     char* get_id_type(char* id);
+    void change_type(char* id, char *type);
 %}
 
 %union {
@@ -66,6 +67,9 @@
 /* Nonterminal with return, which need to sepcify type */
 %type <s_val> type
 %type <s_val> value_basic
+%type <s_val> value_change_type_ID
+%type <i_val> value_change_type_int
+%type <f_val> value_change_type_float
 
 /* Yacc will start at this nonterminal */
 %start program
@@ -173,7 +177,22 @@ arithmetic_statement_3
 
 value
     : value_basic LBRACK logical_statement_1 RBRACK {printType = get_arrary_type($1);}
+    | LB type RB value_change_type_ID {change_type($4, $2);}
+    | LB type RB value_change_type_int {change_type("int", $2);}
+    | LB type RB value_change_type_float {change_type("float", $2);}
     | value_basic
+;
+
+value_change_type_ID
+    : ID {idFunction($1); printType = get_id_type($1);}
+;
+
+value_change_type_int
+    : INT_LIT {printType = "int"; printf("INT_LIT %d\n", $<i_val>$);}
+;
+
+value_change_type_float
+    : FLOAT_LIT {printType = "float"; printf("FLOAT_LIT %.6f\n", $<f_val>$);}
 ;
 
 value_basic
@@ -301,4 +320,23 @@ char* get_id_type(char* id){
             return symbolTable[symbolTableIndex][i].type;
     }
     return "";
+}
+
+void change_type(char* id, char *type){
+    if(!strcmp(id, "int"))
+        printf("I to F\n");
+    else if(!strcmp(id, "float"))
+        printf("F to I\n");
+    else
+        for(int i=0;i<=nowElementIndex;i++){
+            if(!strcmp(symbolTable[symbolTableIndex][i].name, id)){
+                if(!strcmp(symbolTable[symbolTableIndex][i].type, "int")
+                && !strcmp(type, "float"))
+                    printf("I to F\n");
+                if(!strcmp(symbolTable[symbolTableIndex][i].type, "float")
+                && !strcmp(type, "int"))
+                    printf("F to I\n");
+                break;
+            }   
+        }
 }
