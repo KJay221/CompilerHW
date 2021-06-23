@@ -8,10 +8,32 @@
     void yyerror (char const *s){
         printf("error:%d: %s\n", yylineno, s);
     }
+
+    typedef struct symbol{
+        int index;
+        char* name;
+        char* type;
+        char* elementType;
+    } symbol;
+
+    symbol symbolTable[30][30];
+    int stack[30];
+    int *elementIndexStack = stack;
+    #define push(sp, n) (*((sp)++) = (n))
+    #define pop(sp) (*--(sp))
+    int symbolTableIndex = 0;
+    int nowElementIndex = -1;
+    char* printType = "bool";
+    int lastIndex = 1000;
+
+    void insert_symbol(char* name, char* type, char* elementType);
+    void declareFunction(char* name, char* type, char* elementType);
+    void idFunction(char* id);
+    void init_symbolTable();
+    char* get_id_type(char* id);
     
     FILE *fout = NULL;
     bool HAS_ERROR = false;
-    int INDENT = 0;
 %}
 
 %union {
@@ -74,12 +96,12 @@ if_statement
     | ELSE IF LB logical_statement_1 RB LBRACE program RBRACE
 
 assign_statement
-    : value ASSIGN logical_statement_1 {printf("ASSIGN\n");}
-    | value ADD_ASSIGN logical_statement_1 {printf("ADD_ASSIGN\n");}
-    | value SUB_ASSIGN logical_statement_1 {printf("SUB_ASSIGN\n");}
-    | value MUL_ASSIGN logical_statement_1 {printf("MUL_ASSIGN\n");}
-    | value QUO_ASSIGN logical_statement_1 {printf("QUO_ASSIGN\n");}
-    | value REM_ASSIGN logical_statement_1 {printf("REM_ASSIGN\n");}
+    : value ASSIGN logical_statement_1
+    | value ADD_ASSIGN logical_statement_1
+    | value SUB_ASSIGN logical_statement_1
+    | value MUL_ASSIGN logical_statement_1
+    | value QUO_ASSIGN logical_statement_1
+    | value REM_ASSIGN logical_statement_1
 ;
 
 while_statement
@@ -87,24 +109,32 @@ while_statement
 ;
 
 declare_statement
-    : type ID SEMICOLON
-    | type ID ASSIGN value SEMICOLON
+    : type ID SEMICOLON {declareFunction($2, $1, "-");}
+    | type ID ASSIGN value SEMICOLON {declareFunction($2, $1, "-");}
     | type ID LBRACK value RBRACK SEMICOLON
 ;
 
 print_statement
     : PRINT LB logical_statement_1 RB SEMICOLON
+    {
+        if(!strcmp(printType,"int"))
+            fprintf(fout,"getstatic java/lang/System/out Ljava/io/PrintStream;\nswap\ninvokevirtual java/io/PrintStream/print(I)V\n");
+        else if(!strcmp(printType,"float"))
+            fprintf(fout,"getstatic java/lang/System/out Ljava/io/PrintStream;\nswap\ninvokevirtual java/io/PrintStream/print(F)V\n");
+        else if(!strcmp(printType,"string"))
+            fprintf(fout,"getstatic java/lang/System/out Ljava/io/PrintStream;\nswap\ninvokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n");
+    }
 ;
 
 logical_statement_1
-    : logical_statement_2 OR logical_statement_2
-    | logical_statement_1 OR logical_statement_2
+    : logical_statement_2 OR logical_statement_2 {fprintf(fout,"ior\n");}
+    | logical_statement_1 OR logical_statement_2 {fprintf(fout,"ior\n");}
     | logical_statement_2
 ;
 
 logical_statement_2
-    : comparater_statement AND comparater_statement
-    | logical_statement_2 AND comparater_statement
+    : comparater_statement AND comparater_statement {fprintf(fout,"iand\n");}
+    | logical_statement_2 AND comparater_statement {fprintf(fout,"iand\n");}
     | comparater_statement
 ;
 
@@ -131,30 +161,54 @@ arithmetic_statement
 
 arithmetic_statement_1
     : arithmetic_statement_2 ADD arithmetic_statement_2
+    {   if(!strcmp(printType,"int")) fprintf(fout,"iadd\n");
+        else if(!strcmp(printType,"float")) fprintf(fout,"fadd\n");}
     | arithmetic_statement_2 SUB arithmetic_statement_2
+    {   if(!strcmp(printType,"int")) fprintf(fout,"isub\n");
+        else if(!strcmp(printType,"float")) fprintf(fout,"fsub\n");}
     | arithmetic_statement_1 ADD arithmetic_statement_2
+    {   if(!strcmp(printType,"int")) fprintf(fout,"iadd\n");
+        else if(!strcmp(printType,"float")) fprintf(fout,"fadd\n");}
     | arithmetic_statement_1 SUB arithmetic_statement_2
+    {   if(!strcmp(printType,"int")) fprintf(fout,"isub\n");
+        else if(!strcmp(printType,"float")) fprintf(fout,"fsub\n");}
     | arithmetic_statement_2
 ;
 
 arithmetic_statement_2
     : arithmetic_statement_3 MUL arithmetic_statement_3
+    {   if(!strcmp(printType,"int")) fprintf(fout,"imul\n");
+        else if(!strcmp(printType,"float")) fprintf(fout,"fmul\n");}
     | arithmetic_statement_3 QUO arithmetic_statement_3
+    {   if(!strcmp(printType,"int")) fprintf(fout,"idiv\n");
+        else if(!strcmp(printType,"float")) fprintf(fout,"fdiv\n");}
     | arithmetic_statement_3 REM arithmetic_statement_3
+    {fprintf(fout,"irem\n");}
     | arithmetic_statement_2 MUL arithmetic_statement_3
+    {   if(!strcmp(printType,"int")) fprintf(fout,"imul\n");
+        else if(!strcmp(printType,"float")) fprintf(fout,"fmul\n");}
     | arithmetic_statement_2 QUO arithmetic_statement_3
+    {   if(!strcmp(printType,"int")) fprintf(fout,"idiv\n");
+        else if(!strcmp(printType,"float")) fprintf(fout,"fdiv\n");}
     | arithmetic_statement_2 REM arithmetic_statement_3
+    {fprintf(fout,"irem \n");}
     | arithmetic_statement_3
 ;
 
 arithmetic_statement_3
     : value INC
+    {   if(!strcmp(printType,"int")){fprintf(fout,"ldc 1\n");fprintf(fout,"iadd\n");fprintf(fout,"istore %d\n",lastIndex);}
+        else if(!strcmp(printType,"float")){fprintf(fout,"ldc 1.0\n");fprintf(fout,"fadd\n");fprintf(fout,"fstore %d\n",lastIndex);}}    
     | value DEC
+    {   if(!strcmp(printType,"int")){fprintf(fout,"ldc 1\n");fprintf(fout,"isub\n");fprintf(fout,"istore %d\n",lastIndex);}
+        else if(!strcmp(printType,"float")){fprintf(fout,"ldc 1.0\n");fprintf(fout,"fsub\n");fprintf(fout,"fstore %d\n",lastIndex);}}    
     | LB arithmetic_statement_1 RB
     | ADD value
     | SUB value
-    | NOT value
-    | NOT arithmetic_statement_3
+    {   if(!strcmp(printType,"int")) fprintf(fout,"ineg\n");
+        else if(!strcmp(printType,"float")) fprintf(fout,"fneg\n");} 
+    | NOT value {fprintf(fout,"iconst_1\n"); fprintf(fout,"ixor\n");}
+    | NOT arithmetic_statement_3 {fprintf(fout,"iconst_1\n"); fprintf(fout,"ixor\n");}
     | value
 ;
 
@@ -179,12 +233,12 @@ value_change_type_float
 ;
 
 value_basic
-    : INT_LIT
-    | FLOAT_LIT
-    | STRING_LIT
-    | TRUE
-    | FALSE
-    | ID
+    : INT_LIT {printType = "int"; fprintf(fout,"ldc %d\n",$1);}
+    | FLOAT_LIT {printType = "float"; fprintf(fout,"ldc %f\n",$1);}
+    | STRING_LIT {printType = "string"; fprintf(fout,"ldc \"%s\"\n",$1);}
+    | TRUE {printType = "bool"; fprintf(fout,"iconst_1\n");}
+    | FALSE {printType = "bool"; fprintf(fout,"iconst_0\n");}
+    | ID {idFunction($1); printType = get_id_type($1);}
 ;
 
 type
@@ -205,6 +259,7 @@ int main(int argc, char *argv[])
     } else {
         yyin = stdin;
     }
+    init_symbolTable();
 
     /*output init */
     char *bytecode_filename = "hw3.j";
@@ -213,9 +268,8 @@ int main(int argc, char *argv[])
     fprintf(fout,".class public Main\n");
     fprintf(fout,".super java/lang/Object\n");
     fprintf(fout,".method public static main([Ljava/lang/String;)V\n");
-    fprintf(fout,".limit stack 100\n");
-    fprintf(fout,".limit locals 100\n");
-    INDENT++;
+    fprintf(fout,".limit stack 1000\n");
+    fprintf(fout,".limit locals 1000\n");
 
     yyparse();
 
@@ -223,7 +277,6 @@ int main(int argc, char *argv[])
 
     /*end */
     fprintf(fout,"return\n");
-    INDENT--;
     fprintf(fout,".end method\n");
     fclose(fout);
     fclose(yyin);
@@ -231,4 +284,72 @@ int main(int argc, char *argv[])
     if(HAS_ERROR)
         remove(bytecode_filename);
     return 0;
+}
+
+void insert_symbol(char* name, char* type, char* elementType){
+    nowElementIndex++;
+    symbolTable[symbolTableIndex][nowElementIndex].index = nowElementIndex;
+    symbolTable[symbolTableIndex][nowElementIndex].name = name;
+    symbolTable[symbolTableIndex][nowElementIndex].type = type;
+    symbolTable[symbolTableIndex][nowElementIndex].elementType = elementType;
+    if(!strcmp(type,"int"))
+        fprintf(fout,"istore %d\n",symbolTableIndex*30+nowElementIndex);
+    else if(!strcmp(type,"float"))
+        fprintf(fout,"fstore %d\n",symbolTableIndex*30+nowElementIndex);
+    else if(!strcmp(type,"string"))
+        fprintf(fout,"astore %d\n",symbolTableIndex*30+nowElementIndex);
+}
+
+void declareFunction(char* name, char* type, char* elementType){
+    insert_symbol(name, type, elementType);
+}
+
+void idFunction(char* id){
+    char* nowType;
+    int flag = 0;
+    int index_table = 0;
+    int index_element = 0;
+    for(int i=29;i>=0;i--){
+        for(int j=0;j<30;j++){
+            if(!strcmp(symbolTable[i][j].name, id)){
+                nowType = symbolTable[i][j].type;
+                index_table = i;
+                index_element = j;
+                flag = 1;
+                break;
+            }    
+        }
+        if(flag)
+            break;
+    }
+    
+    if(!strcmp(nowType,"int"))
+        fprintf(fout,"iload %d\n",index_table*30+index_element);
+    else if(!strcmp(nowType,"float"))
+        fprintf(fout,"fload %d\n",index_table*30+index_element);
+    else if(!strcmp(nowType,"string"))
+        fprintf(fout,"aload %d\n",index_table*30+index_element);
+    
+    lastIndex = index_table*30+index_element;
+}
+
+void init_symbolTable(){
+    for(int i=0;i<30;i++){
+        for(int j=0;j<30;j++){
+            symbolTable[i][j].index = 0;
+            symbolTable[i][j].name = "";
+            symbolTable[i][j].type = "";
+            symbolTable[i][j].elementType = "";
+        }
+    }
+}
+
+char* get_id_type(char* id){
+    for(int i=29;i>=0;i--){
+        for(int j=0;j<30;j++){
+            if(!strcmp(symbolTable[i][j].name, id))
+                return symbolTable[i][j].type;
+        }
+    }
+    return "";
 }

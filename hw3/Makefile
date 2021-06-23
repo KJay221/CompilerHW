@@ -35,4 +35,4 @@ judge: all
 	@python3 judge/judge.py -v ${v} || printf "or \`make judge v=1\`"
 
 clean:
-	rm -f ${COMPILER} y.tab.* y.output lex.* ${EXEC}.class *.j
+	rm -f ${COMPILER} y.tab.* y.output lex.* ${EXEC}.class *.j *.log
