@@ -37,6 +37,7 @@
     void init_symbolTable();
     char* get_id_type(char* id);
     int get_id_index(char *id);
+    char* get_id_elementType(char* id);
     
     FILE *fout = NULL;
     bool HAS_ERROR = false;
@@ -100,6 +101,7 @@ if_statement
     : IF LB logical_statement_1 RB LBRACE program RBRACE 
     | ELSE LBRACE program RBRACE
     | ELSE IF LB logical_statement_1 RB LBRACE program RBRACE
+;
 
 assign_statement
     : value_basic ASSIGN logical_statement_1
@@ -131,6 +133,12 @@ assign_statement
     }
     | value_basic REM_ASSIGN logical_statement_1
     {fprintf(fout,"irem\n"); fprintf(fout,"istore %d\n",get_id_index($1));}
+    | value_basic LBRACK logical_statement_1 RBRACK {fprintf(fout,"aload %d\n",get_id_index($1)); fprintf(fout,"swap\n");}
+      ASSIGN logical_statement_1
+    {
+        if(!strcmp(get_id_elementType($1),"int")) fprintf(fout,"iastore\n");
+        else fprintf(fout,"fastore\n");
+    }
 ;
 
 while_statement
@@ -140,7 +148,7 @@ while_statement
 declare_statement
     : type ID SEMICOLON {declareFunction($2, $1, "-", 0);}
     | type ID ASSIGN value SEMICOLON {declareFunction($2, $1, "-", 1);}
-    | type ID LBRACK value RBRACK SEMICOLON
+    | type ID LBRACK value RBRACK SEMICOLON {declareFunction($2, "array", $1, 0);}
 ;
 
 print_statement
@@ -255,6 +263,9 @@ arithmetic_statement_3
 
 value
     : value_basic LBRACK logical_statement_1 RBRACK
+    {   fprintf(fout,"aload %d\n",get_id_index($1)); fprintf(fout,"swap\n");
+        if(!strcmp(get_id_elementType($1),"int")) {fprintf(fout,"iaload\n"); printType = "int";}
+        else {fprintf(fout,"faload\n"); printType = "float";}}
     | LB type RB value_change_type_ID
     | LB type RB value_change_type_int
     | LB type RB value_change_type_float
@@ -362,7 +373,10 @@ void declareFunction(char* name, char* type, char* elementType, int init){
             fprintf(fout,"ldc 1\n");
         fprintf(fout,"istore %d\n",symbolTableIndex*30+nowElementIndex);
     }
-         
+    else if(!strcmp(type,"array")){
+        fprintf(fout,"newarray %s\n",elementType);
+        fprintf(fout,"astore %d\n",symbolTableIndex*30+nowElementIndex);
+    }     
 }
 
 void idFunction(char* id){
@@ -424,4 +438,14 @@ int get_id_index(char *id){
         }
     }
     return 1000;
+}
+
+char* get_id_elementType(char* id){
+    for(int i=29;i>=0;i--){
+        for(int j=0;j<30;j++){
+            if(!strcmp(symbolTable[i][j].name, id))
+                return symbolTable[i][j].elementType;
+        }
+    }
+    return "";
 }
