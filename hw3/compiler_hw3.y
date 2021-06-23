@@ -26,6 +26,10 @@
     char* printType = "bool";
     int lastIndex = 1000;
     int labelIndex = 0;
+    int last_int = 0;
+    float last_float = 0;
+    char* last_string = "";
+    int last_bool;
 
     void insert_symbol(char* name, char* type, char* elementType);
     void declareFunction(char* name, char* type, char* elementType);
@@ -98,11 +102,34 @@ if_statement
 
 assign_statement
     : value ASSIGN logical_statement_1
+    {
+        if(!strcmp(printType,"int")) fprintf(fout,"istore %d\n",lastIndex);
+        else if(!strcmp(printType,"float")) fprintf(fout,"fstore %d\n",lastIndex);
+        else if(!strcmp(printType,"string")) fprintf(fout,"astore %d\n",lastIndex);
+        else if(!strcmp(printType,"bool")) fprintf(fout,"istore %d\n",lastIndex);
+    }
     | value ADD_ASSIGN logical_statement_1
+    {
+        if(!strcmp(printType,"int")) {fprintf(fout,"iadd\n"); fprintf(fout,"istore %d\n",lastIndex);}
+        else if(!strcmp(printType,"float")) {fprintf(fout,"fadd\n"); fprintf(fout,"fstore %d\n",lastIndex);}
+    }
     | value SUB_ASSIGN logical_statement_1
+    {
+        if(!strcmp(printType,"int")) {fprintf(fout,"isub\n"); fprintf(fout,"istore %d\n",lastIndex);}
+        else if(!strcmp(printType,"float")) {fprintf(fout,"fsub\n"); fprintf(fout,"fstore %d\n",lastIndex);}
+    }
     | value MUL_ASSIGN logical_statement_1
+    {
+        if(!strcmp(printType,"int")) {fprintf(fout,"imul\n"); fprintf(fout,"istore %d\n",lastIndex);}
+        else if(!strcmp(printType,"float")) {fprintf(fout,"fmul\n"); fprintf(fout,"fstore %d\n",lastIndex);}
+    }
     | value QUO_ASSIGN logical_statement_1
+    {
+        if(!strcmp(printType,"int")) {fprintf(fout,"idiv\n"); fprintf(fout,"istore %d\n",lastIndex);}
+        else if(!strcmp(printType,"float")) {fprintf(fout,"fdiv\n"); fprintf(fout,"fstore %d\n",lastIndex);}
+    }
     | value REM_ASSIGN logical_statement_1
+    {fprintf(fout,"irem\n"); fprintf(fout,"istore %d\n",lastIndex);}
 ;
 
 while_statement
@@ -125,7 +152,7 @@ print_statement
         else if(!strcmp(printType,"string"))
             fprintf(fout,"getstatic java/lang/System/out Ljava/io/PrintStream;\nswap\ninvokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n");
         else if(!strcmp(printType,"bool")){
-            fprintf(fout,"iconst_1\n"); fprintf(fout,"ifne L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"ldc \"false\"\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"ifne L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"ldc \"false\"\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
             fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"ldc \"true\"\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;
             fprintf(fout,"getstatic java/lang/System/out Ljava/io/PrintStream;\n"); fprintf(fout,"swap\n"); fprintf(fout,"invokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n");
         }
@@ -246,11 +273,11 @@ value_change_type_float
 ;
 
 value_basic
-    : INT_LIT {printType = "int"; fprintf(fout,"ldc %d\n",$1);}
-    | FLOAT_LIT {printType = "float"; fprintf(fout,"ldc %f\n",$1);}
-    | STRING_LIT {printType = "string"; fprintf(fout,"ldc \"%s\"\n",$1);}
-    | TRUE {printType = "bool"; fprintf(fout,"iconst_1\n");}
-    | FALSE {printType = "bool"; fprintf(fout,"iconst_0\n");}
+    : INT_LIT {printType = "int"; fprintf(fout,"ldc %d\n",$1); last_int=$1;}
+    | FLOAT_LIT {printType = "float"; fprintf(fout,"ldc %f\n",$1); last_float=$1;}
+    | STRING_LIT {printType = "string"; fprintf(fout,"ldc \"%s\"\n",$1); last_string=$1;}
+    | TRUE {printType = "bool"; fprintf(fout,"iconst_1\n"); last_bool=1;}
+    | FALSE {printType = "bool"; fprintf(fout,"iconst_0\n"); last_bool=0;}
     | ID {idFunction($1); printType = get_id_type($1);}
 ;
 
@@ -309,8 +336,12 @@ void insert_symbol(char* name, char* type, char* elementType){
         fprintf(fout,"istore %d\n",symbolTableIndex*30+nowElementIndex);
     else if(!strcmp(type,"float"))
         fprintf(fout,"fstore %d\n",symbolTableIndex*30+nowElementIndex);
-    else if(!strcmp(type,"string"))
+    else if(!strcmp(type,"string")){
+        fprintf(fout,"ldc \"\"\n");
         fprintf(fout,"astore %d\n",symbolTableIndex*30+nowElementIndex);
+    }
+    else if(!strcmp(type,"bool"))
+        fprintf(fout,"istore %d\n",symbolTableIndex*30+nowElementIndex);   
 }
 
 void declareFunction(char* name, char* type, char* elementType){
@@ -342,7 +373,8 @@ void idFunction(char* id){
         fprintf(fout,"fload %d\n",index_table*30+index_element);
     else if(!strcmp(nowType,"string"))
         fprintf(fout,"aload %d\n",index_table*30+index_element);
-    
+    else if(!strcmp(nowType,"bool"))
+        fprintf(fout,"iload %d\n",index_table*30+index_element);
     lastIndex = index_table*30+index_element;
 }
 
