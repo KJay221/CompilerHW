@@ -25,6 +25,7 @@
     int nowElementIndex = -1;
     char* printType = "bool";
     int lastIndex = 1000;
+    int labelIndex = 0;
 
     void insert_symbol(char* name, char* type, char* elementType);
     void declareFunction(char* name, char* type, char* elementType);
@@ -123,6 +124,11 @@ print_statement
             fprintf(fout,"getstatic java/lang/System/out Ljava/io/PrintStream;\nswap\ninvokevirtual java/io/PrintStream/print(F)V\n");
         else if(!strcmp(printType,"string"))
             fprintf(fout,"getstatic java/lang/System/out Ljava/io/PrintStream;\nswap\ninvokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n");
+        else if(!strcmp(printType,"bool")){
+            fprintf(fout,"iconst_1\n"); fprintf(fout,"ifne L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"ldc \"false\"\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"ldc \"true\"\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;
+            fprintf(fout,"getstatic java/lang/System/out Ljava/io/PrintStream;\n"); fprintf(fout,"swap\n"); fprintf(fout,"invokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n");
+        }
     }
 ;
 
@@ -140,6 +146,13 @@ logical_statement_2
 
 comparater_statement
     : arithmetic_statement GTR arithmetic_statement
+    {   if(!strcmp(printType,"int")){
+            fprintf(fout,"isub\n"); fprintf(fout,"ifgt L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}
+        else if(!strcmp(printType,"float")){
+            fprintf(fout,"fcmpl\n"); fprintf(fout,"ifgt L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}
+    }
     | arithmetic_statement LSS arithmetic_statement
     | arithmetic_statement GEQ arithmetic_statement
     | arithmetic_statement LEQ arithmetic_statement
