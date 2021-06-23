@@ -32,10 +32,11 @@
     int last_bool;
 
     void insert_symbol(char* name, char* type, char* elementType);
-    void declareFunction(char* name, char* type, char* elementType);
+    void declareFunction(char* name, char* type, char* elementType,int init);
     void idFunction(char* id);
     void init_symbolTable();
     char* get_id_type(char* id);
+    int get_id_index(char *id);
     
     FILE *fout = NULL;
     bool HAS_ERROR = false;
@@ -101,35 +102,35 @@ if_statement
     | ELSE IF LB logical_statement_1 RB LBRACE program RBRACE
 
 assign_statement
-    : value ASSIGN logical_statement_1
+    : value_basic ASSIGN logical_statement_1
     {
-        if(!strcmp(printType,"int")) fprintf(fout,"istore %d\n",lastIndex);
-        else if(!strcmp(printType,"float")) fprintf(fout,"fstore %d\n",lastIndex);
-        else if(!strcmp(printType,"string")) fprintf(fout,"astore %d\n",lastIndex);
-        else if(!strcmp(printType,"bool")) fprintf(fout,"istore %d\n",lastIndex);
+        if(!strcmp(printType,"int")) fprintf(fout,"istore %d\n",get_id_index($1));
+        else if(!strcmp(printType,"float")) fprintf(fout,"fstore %d\n",get_id_index($1));
+        else if(!strcmp(printType,"string")) fprintf(fout,"astore %d\n",get_id_index($1));
+        else if(!strcmp(printType,"bool")) fprintf(fout,"istore %d\n",get_id_index($1));
     }
-    | value ADD_ASSIGN logical_statement_1
+    | value_basic ADD_ASSIGN logical_statement_1
     {
-        if(!strcmp(printType,"int")) {fprintf(fout,"iadd\n"); fprintf(fout,"istore %d\n",lastIndex);}
-        else if(!strcmp(printType,"float")) {fprintf(fout,"fadd\n"); fprintf(fout,"fstore %d\n",lastIndex);}
+        if(!strcmp(printType,"int")) {fprintf(fout,"iadd\n"); fprintf(fout,"istore %d\n",get_id_index($1));}
+        else if(!strcmp(printType,"float")) {fprintf(fout,"fadd\n"); fprintf(fout,"fstore %d\n",get_id_index($1));}
     }
-    | value SUB_ASSIGN logical_statement_1
+    | value_basic SUB_ASSIGN logical_statement_1
     {
-        if(!strcmp(printType,"int")) {fprintf(fout,"isub\n"); fprintf(fout,"istore %d\n",lastIndex);}
-        else if(!strcmp(printType,"float")) {fprintf(fout,"fsub\n"); fprintf(fout,"fstore %d\n",lastIndex);}
+        if(!strcmp(printType,"int")) {fprintf(fout,"isub\n"); fprintf(fout,"istore %d\n",get_id_index($1));}
+        else if(!strcmp(printType,"float")) {fprintf(fout,"fsub\n"); fprintf(fout,"fstore %d\n",get_id_index($1));}
     }
-    | value MUL_ASSIGN logical_statement_1
+    | value_basic MUL_ASSIGN logical_statement_1
     {
-        if(!strcmp(printType,"int")) {fprintf(fout,"imul\n"); fprintf(fout,"istore %d\n",lastIndex);}
-        else if(!strcmp(printType,"float")) {fprintf(fout,"fmul\n"); fprintf(fout,"fstore %d\n",lastIndex);}
+        if(!strcmp(printType,"int")) {fprintf(fout,"imul\n"); fprintf(fout,"istore %d\n",get_id_index($1));}
+        else if(!strcmp(printType,"float")) {fprintf(fout,"fmul\n"); fprintf(fout,"fstore %d\n",get_id_index($1));}
     }
-    | value QUO_ASSIGN logical_statement_1
+    | value_basic QUO_ASSIGN logical_statement_1
     {
-        if(!strcmp(printType,"int")) {fprintf(fout,"idiv\n"); fprintf(fout,"istore %d\n",lastIndex);}
-        else if(!strcmp(printType,"float")) {fprintf(fout,"fdiv\n"); fprintf(fout,"fstore %d\n",lastIndex);}
+        if(!strcmp(printType,"int")) {fprintf(fout,"idiv\n"); fprintf(fout,"istore %d\n",get_id_index($1));}
+        else if(!strcmp(printType,"float")) {fprintf(fout,"fdiv\n"); fprintf(fout,"fstore %d\n",get_id_index($1));}
     }
-    | value REM_ASSIGN logical_statement_1
-    {fprintf(fout,"irem\n"); fprintf(fout,"istore %d\n",lastIndex);}
+    | value_basic REM_ASSIGN logical_statement_1
+    {fprintf(fout,"irem\n"); fprintf(fout,"istore %d\n",get_id_index($1));}
 ;
 
 while_statement
@@ -137,8 +138,8 @@ while_statement
 ;
 
 declare_statement
-    : type ID SEMICOLON {declareFunction($2, $1, "-");}
-    | type ID ASSIGN value SEMICOLON {declareFunction($2, $1, "-");}
+    : type ID SEMICOLON {declareFunction($2, $1, "-", 0);}
+    | type ID ASSIGN value SEMICOLON {declareFunction($2, $1, "-", 1);}
     | type ID LBRACK value RBRACK SEMICOLON
 ;
 
@@ -262,14 +263,19 @@ value
 
 value_change_type_ID
     : ID
+    {
+        idFunction($1); printType = get_id_type($1);
+        if(!strcmp(printType,"int")) {fprintf(fout,"i2f\n"); printType = "float";}
+        else if(!strcmp(printType,"float")) {fprintf(fout,"f2i\n"); printType = "int";}
+    }
 ;
 
 value_change_type_int
-    : INT_LIT
+    : INT_LIT {printType = "float"; fprintf(fout,"ldc %i\n",$1); fprintf(fout,"i2f\n"); last_float=(float)$1;}
 ;
 
 value_change_type_float
-    : FLOAT_LIT
+    : FLOAT_LIT {printType = "int"; fprintf(fout,"ldc %f\n",$1); fprintf(fout,"f2i\n"); last_int=(int)$1;}
 ;
 
 value_basic
@@ -331,21 +337,32 @@ void insert_symbol(char* name, char* type, char* elementType){
     symbolTable[symbolTableIndex][nowElementIndex].index = nowElementIndex;
     symbolTable[symbolTableIndex][nowElementIndex].name = name;
     symbolTable[symbolTableIndex][nowElementIndex].type = type;
-    symbolTable[symbolTableIndex][nowElementIndex].elementType = elementType;
-    if(!strcmp(type,"int"))
-        fprintf(fout,"istore %d\n",symbolTableIndex*30+nowElementIndex);
-    else if(!strcmp(type,"float"))
-        fprintf(fout,"fstore %d\n",symbolTableIndex*30+nowElementIndex);
-    else if(!strcmp(type,"string")){
-        fprintf(fout,"ldc \"\"\n");
-        fprintf(fout,"astore %d\n",symbolTableIndex*30+nowElementIndex);
-    }
-    else if(!strcmp(type,"bool"))
-        fprintf(fout,"istore %d\n",symbolTableIndex*30+nowElementIndex);   
+    symbolTable[symbolTableIndex][nowElementIndex].elementType = elementType;  
 }
 
-void declareFunction(char* name, char* type, char* elementType){
+void declareFunction(char* name, char* type, char* elementType, int init){
     insert_symbol(name, type, elementType);
+    if(!strcmp(type,"int")){
+        if(!init)
+            fprintf(fout,"ldc 0\n");
+        fprintf(fout,"istore %d\n",symbolTableIndex*30+nowElementIndex);
+    } 
+    else if(!strcmp(type,"float")){
+        if(!init)
+            fprintf(fout,"ldc 0.0\n");
+        fprintf(fout,"fstore %d\n",symbolTableIndex*30+nowElementIndex);
+    }
+    else if(!strcmp(type,"string")){
+        if(!init)
+            fprintf(fout,"ldc \"\"\n");
+        fprintf(fout,"astore %d\n",symbolTableIndex*30+nowElementIndex);
+    }
+    else if(!strcmp(type,"bool")){
+        if(!init)
+            fprintf(fout,"ldc 1\n");
+        fprintf(fout,"istore %d\n",symbolTableIndex*30+nowElementIndex);
+    }
+         
 }
 
 void idFunction(char* id){
@@ -397,4 +414,14 @@ char* get_id_type(char* id){
         }
     }
     return "";
+}
+
+int get_id_index(char *id){
+    for(int i=29;i>=0;i--){
+        for(int j=0;j<30;j++){
+            if(!strcmp(symbolTable[i][j].name, id))
+                return i*30+j;
+        }
+    }
+    return 1000;
 }
