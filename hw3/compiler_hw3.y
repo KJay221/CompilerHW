@@ -44,6 +44,9 @@
     char* get_id_type(char* id);
     int get_id_index(char *id);
     char* get_id_elementType(char* id);
+    void into_zone();
+    void exit_zone();
+    void clean_symbolTable();
     
     FILE *fout = NULL;
     bool HAS_ERROR = false;
@@ -101,9 +104,9 @@ statements
 
 for_statement
     : FOR LB assign_statement for_statement1 for_statement2 RB
-    {fprintf(fout,"pop\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); for_component[4] = labelIndex; labelIndex++;}
+    {into_zone(); fprintf(fout,"pop\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); for_component[4] = labelIndex; labelIndex++;}
     LBRACE program RBRACE
-    {
+    {   exit_zone();
         if(for_component[3]){
             fprintf(fout,"iload %d\n",for_component[0]);fprintf(fout,"ldc 1\n");fprintf(fout,"isub\n");fprintf(fout,"istore %d\n",lastIndex);}
         else{
@@ -125,12 +128,12 @@ for_statement2
 ;
 
 if_statement
-    : IF LB logical_statement_1 RB {fprintf(fout,"ldc 0\n"); fprintf(fout,"istore 1000\n"); fprintf(fout,"ldc 0\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
-    LBRACE program RBRACE {fprintf(fout,"ldc 1\n"); fprintf(fout,"istore 1000\n"); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
-    | ELSE {fprintf(fout,"iload 1000\n"); fprintf(fout,"ldc 1\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
-    LBRACE program RBRACE {fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
-    | ELSE IF LB logical_statement_1 RB {fprintf(fout,"ldc 0\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
-    LBRACE program RBRACE {fprintf(fout,"ldc 1\n"); fprintf(fout,"istore 1000\n"); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
+    : IF LB logical_statement_1 RB {into_zone(); fprintf(fout,"ldc 0\n"); fprintf(fout,"istore 1000\n"); fprintf(fout,"ldc 0\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
+    LBRACE program RBRACE {exit_zone(); fprintf(fout,"ldc 1\n"); fprintf(fout,"istore 1000\n"); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
+    | ELSE {into_zone(); fprintf(fout,"iload 1000\n"); fprintf(fout,"ldc 1\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
+    LBRACE program RBRACE {exit_zone(); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
+    | ELSE IF LB logical_statement_1 RB {into_zone(); fprintf(fout,"ldc 0\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
+    LBRACE program RBRACE {exit_zone(); fprintf(fout,"ldc 1\n"); fprintf(fout,"istore 1000\n"); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
 ;
 
 assign_statement
@@ -172,8 +175,8 @@ assign_statement
 ;
 
 while_statement
-    : while_statement1 LB logical_statement_1 RB {fprintf(fout,"ldc 0\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
-    LBRACE program RBRACE {fprintf(fout,"goto L_cmp_%d\n",pop(labelStack2)); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
+    : while_statement1 LB logical_statement_1 RB {into_zone(); fprintf(fout,"ldc 0\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
+    LBRACE program RBRACE {exit_zone(); fprintf(fout,"goto L_cmp_%d\n",pop(labelStack2)); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
 ;
 
 while_statement1
@@ -517,4 +520,25 @@ char* get_id_elementType(char* id){
         }
     }
     return "";
+}
+
+void into_zone(){
+    push(elementIndexStack, nowElementIndex);
+    symbolTableIndex++;
+    nowElementIndex = -1;
+}
+
+void exit_zone(){
+    nowElementIndex = pop(elementIndexStack);
+    clean_symbolTable();
+    symbolTableIndex--;
+}
+
+void clean_symbolTable(){
+    for(int i=0;i<30;i++){
+        symbolTable[symbolTableIndex][i].index = 0;
+        symbolTable[symbolTableIndex][i].name = "";
+        symbolTable[symbolTableIndex][i].type = "";
+        symbolTable[symbolTableIndex][i].elementType = "";
+    }
 }
