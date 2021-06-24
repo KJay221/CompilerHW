@@ -19,8 +19,11 @@
     symbol symbolTable[30][30];
     int stack[30];
     int *elementIndexStack = stack;
+    int stack_label[30];
+    int *labelStack = stack_label;
     #define push(sp, n) (*((sp)++) = (n))
     #define pop(sp) (*--(sp))
+    #define top(sp) (*(sp))
     int symbolTableIndex = 0;
     int nowElementIndex = -1;
     char* printType = "bool";
@@ -120,9 +123,12 @@ for_statement2
 ;
 
 if_statement
-    : IF LB logical_statement_1 RB LBRACE program RBRACE 
-    | ELSE LBRACE program RBRACE
-    | ELSE IF LB logical_statement_1 RB LBRACE program RBRACE
+    : IF LB logical_statement_1 RB {fprintf(fout,"ldc 0\n"); fprintf(fout,"istore 1000\n"); fprintf(fout,"ldc 0\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
+    LBRACE program RBRACE {fprintf(fout,"ldc 1\n"); fprintf(fout,"istore 1000\n"); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
+    | ELSE {fprintf(fout,"iload 1000\n"); fprintf(fout,"ldc 1\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
+    LBRACE program RBRACE {fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
+    | ELSE IF LB logical_statement_1 RB {fprintf(fout,"ldc 0\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
+    LBRACE program RBRACE {fprintf(fout,"ldc 1\n"); fprintf(fout,"istore 1000\n"); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
 ;
 
 assign_statement
@@ -209,18 +215,47 @@ comparater_statement
             fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}
         else if(!strcmp(printType,"float")){
             fprintf(fout,"fcmpl\n"); fprintf(fout,"ifgt L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
-            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}
-    }
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}}
     | arithmetic_statement LSS arithmetic_statement
     | arithmetic_statement GEQ arithmetic_statement
     | arithmetic_statement LEQ arithmetic_statement
+    {   if(!strcmp(printType,"int")){
+            fprintf(fout,"isub\n"); fprintf(fout,"ifle L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}
+        else if(!strcmp(printType,"float")){
+            fprintf(fout,"fcmpl\n"); fprintf(fout,"ifle L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}}
     | arithmetic_statement EQL arithmetic_statement
+    {   if(!strcmp(printType,"int")){
+            fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}
+        else if(!strcmp(printType,"float")){
+            fprintf(fout,"fcmpl\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}}
     | arithmetic_statement NEQ arithmetic_statement
     | comparater_statement GTR arithmetic_statement
+    {   if(!strcmp(printType,"int")){
+            fprintf(fout,"isub\n"); fprintf(fout,"ifgt L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}
+        else if(!strcmp(printType,"float")){
+            fprintf(fout,"fcmpl\n"); fprintf(fout,"ifgt L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}}
     | comparater_statement LSS arithmetic_statement
     | comparater_statement GEQ arithmetic_statement
     | comparater_statement LEQ arithmetic_statement
+    {   if(!strcmp(printType,"int")){
+            fprintf(fout,"isub\n"); fprintf(fout,"ifle L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}
+        else if(!strcmp(printType,"float")){
+            fprintf(fout,"fcmpl\n"); fprintf(fout,"ifle L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}}
     | comparater_statement EQL arithmetic_statement
+    {   if(!strcmp(printType,"int")){
+            fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}
+        else if(!strcmp(printType,"float")){
+            fprintf(fout,"fcmpl\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); labelIndex++; fprintf(fout,"iconst_0\n"); fprintf(fout,"goto L_cmp_%d\n",labelIndex); labelIndex--;
+            fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++; fprintf(fout,"iconst_1\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); labelIndex++;}}
     | comparater_statement NEQ arithmetic_statement
     | arithmetic_statement
 ;
@@ -352,8 +387,8 @@ int main(int argc, char *argv[])
     fprintf(fout,".class public Main\n");
     fprintf(fout,".super java/lang/Object\n");
     fprintf(fout,".method public static main([Ljava/lang/String;)V\n");
-    fprintf(fout,".limit stack 1000\n");
-    fprintf(fout,".limit locals 1000\n");
+    fprintf(fout,".limit stack 1001\n");
+    fprintf(fout,".limit locals 1001\n");
 
     yyparse();
 
