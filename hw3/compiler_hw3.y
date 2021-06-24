@@ -21,6 +21,8 @@
     int *elementIndexStack = stack;
     int stack_label[30];
     int *labelStack = stack_label;
+    int stack_label2[30];
+    int *labelStack2 = stack_label2;
     #define push(sp, n) (*((sp)++) = (n))
     #define pop(sp) (*--(sp))
     #define top(sp) (*(sp))
@@ -132,7 +134,7 @@ if_statement
 ;
 
 assign_statement
-    : value_basic ASSIGN logical_statement_1
+    : ID ASSIGN logical_statement_1
     {
         if(!strcmp(printType,"int")) fprintf(fout,"istore %d\n",get_id_index($1));
         else if(!strcmp(printType,"float")) fprintf(fout,"fstore %d\n",get_id_index($1));
@@ -170,7 +172,12 @@ assign_statement
 ;
 
 while_statement
-    : WHILE LB logical_statement_1 RB LBRACE program RBRACE
+    : while_statement1 LB logical_statement_1 RB {fprintf(fout,"ldc 0\n"); fprintf(fout,"isub\n"); fprintf(fout,"ifeq L_cmp_%d\n",labelIndex); push(labelStack,labelIndex++);}
+    LBRACE program RBRACE {fprintf(fout,"goto L_cmp_%d\n",pop(labelStack2)); fprintf(fout,"L_cmp_%d:\n",pop(labelStack));}
+;
+
+while_statement1
+    : WHILE {fprintf(fout,"L_cmp_%d:\n",labelIndex); push(labelStack2,labelIndex++);}
 ;
 
 declare_statement
