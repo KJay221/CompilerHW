@@ -30,6 +30,7 @@
     float last_float = 0;
     char* last_string = "";
     int last_bool;
+    int for_component[5];
 
     void insert_symbol(char* name, char* type, char* elementType);
     void declareFunction(char* name, char* type, char* elementType,int init);
@@ -94,7 +95,28 @@ statements
 ;
 
 for_statement
-    : FOR LB assign_statement logical_statement_1 logical_statement_1 RB  LBRACE program RBRACE
+    : FOR LB assign_statement for_statement1 for_statement2 RB
+    {fprintf(fout,"pop\n"); fprintf(fout,"L_cmp_%d:\n",labelIndex); for_component[4] = labelIndex; labelIndex++;}
+    LBRACE program RBRACE
+    {
+        if(for_component[3]){
+            fprintf(fout,"iload %d\n",for_component[0]);fprintf(fout,"ldc 1\n");fprintf(fout,"isub\n");fprintf(fout,"istore %d\n",lastIndex);}
+        else{
+            fprintf(fout,"iload %d\n",for_component[0]);fprintf(fout,"ldc 1\n");fprintf(fout,"iadd\n");fprintf(fout,"istore %d\n",lastIndex);}
+        fprintf(fout,"iload %d\n",for_component[0]); fprintf(fout,"ldc %d\n",for_component[2]); fprintf(fout,"isub\n");
+        if(!for_component[1]) fprintf(fout,"ifgt L_cmp_%d\n",for_component[4]);
+        else fprintf(fout,"iflt L_cmp_%d\n",for_component[4]);
+    }
+;
+
+for_statement1
+    : ID GTR INT_LIT SEMICOLON {for_component[0] = get_id_index($1); for_component[1] = 0; for_component[2] = $3;}
+    | ID LSS INT_LIT SEMICOLON {for_component[0] = get_id_index($1); for_component[1] = 1; for_component[2] = $3;}
+;
+
+for_statement2
+    : value INC {for_component[3] = 0;}
+    | value DEC {for_component[3] = 1;}
 ;
 
 if_statement
@@ -269,6 +291,7 @@ value
     | LB type RB value_change_type_ID
     | LB type RB value_change_type_int
     | LB type RB value_change_type_float
+    | LB type RB value_change_type_array
     | value_basic
 ;
 
@@ -287,6 +310,10 @@ value_change_type_int
 
 value_change_type_float
     : FLOAT_LIT {printType = "int"; fprintf(fout,"ldc %f\n",$1); fprintf(fout,"f2i\n"); last_int=(int)$1;}
+;
+
+value_change_type_array
+    : LBRACK logical_statement_1 RBRACK
 ;
 
 value_basic
